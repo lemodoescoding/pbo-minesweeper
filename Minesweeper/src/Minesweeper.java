@@ -19,19 +19,27 @@ public class Minesweeper {
     int rows = 8;
     int cols = rows;
     int boardsWidth = cols * tileSize;
-    int boardsHeight = rows * tileSize;
+    int boardsHeight = rows * tileSize + 50; // extra space for text panel
+    int tilesClicked = 0;
     int minesToSet = 10;
+    int minesLeft = minesToSet;
+    int seconds = 0;
+    Timer timer;
+    boolean firstClick = true;
+    boolean isGameOver = false;
     
     JFrame frame = new JFrame("Minesweeper");
     JLabel textLabel = new JLabel();
     JPanel textPanel = new JPanel();
     JPanel boardPanel = new JPanel();
+    JPanel infoPanel = new JPanel();
+    JLabel minesLabel = new JLabel();
+    JLabel timeLabel = new JLabel();
+    JButton retryButton = new JButton("Retry");
 
     MineTile[][] boardTiles = new MineTile[rows][cols];
     ArrayList<MineTile> mineList;
 
-    int tilesClicked = 0;
-    boolean isGameOver = false;
     
     Minesweeper(){
         frame.setSize(boardsWidth, boardsHeight);
@@ -44,10 +52,39 @@ public class Minesweeper {
         textLabel.setHorizontalAlignment(JLabel.CENTER);
         textLabel.setText("Minesweeper");
         textLabel.setOpaque(true);
+
+        minesLabel.setText("Mines: " + minesLeft);
+        minesLabel.setFont(new Font("Arial", Font.PLAIN, 18));
+
+        timeLabel.setText("Time: 0s");
+        timeLabel.setFont(new Font("Arial", Font.PLAIN, 18));
+
+        retryButton.setFocusable(false);
+        retryButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e){
+                resetGame();
+            }
+        });
+
+        infoPanel.setLayout(new FlowLayout());
+        infoPanel.add(minesLabel);
+        infoPanel.add(timeLabel);
+        infoPanel.add(retryButton);
         
         textPanel.setLayout(new BorderLayout());
         textPanel.add(textLabel);
+        textPanel.add(infoPanel, BorderLayout.SOUTH);
+
         frame.add(textPanel, BorderLayout.NORTH);
+
+        timer = new Timer(1000, new ActionListener(){
+            @Override
+            public void actionPerformed(ActionEvent e){
+                seconds++;
+                timeLabel.setText("Time: " + seconds + "s");
+            }
+        });
         
         boardPanel.setLayout(new GridLayout(rows, cols));
         frame.add(boardPanel);
@@ -57,7 +94,7 @@ public class Minesweeper {
                 MineTile tile = new MineTile(r, c);
                 boardTiles[r][c] = tile;
                 
-                tile.setFocusable(true);
+                tile.setFocusable(false);
                 tile.setMargin(new Insets(0, 0, 0, 0));
                 // tile.setFont(new Font("Arial Unicode MS", Font.PLAIN, 16)); // this doesnt work
                 tile.setFont(tile.getFont().deriveFont(Font.PLAIN, 24)); // so i use this instead
@@ -66,6 +103,12 @@ public class Minesweeper {
                     public void mousePressed(MouseEvent e){
                         if(isGameOver) return;
                         MineTile tile = (MineTile)e.getSource();
+
+                        if(firstClick){
+                            timer.start();
+                            firstClick = false;
+                        }
+
                         // Left click
                         if(e.getButton() == MouseEvent.BUTTON1){
                             if(tile.getText() == ""){
@@ -81,9 +124,13 @@ public class Minesweeper {
                         else if(e.getButton() == MouseEvent.BUTTON3){
                             if(tile.getText() == "" && tile.isEnabled()){
                                 tile.setText("🚩");
+                                minesLeft--;
+                                minesLabel.setText("Mines: " + minesLeft);
                             }
                             else if(tile.getText() == "🚩"){
                                 tile.setText("");
+                                minesLeft++;
+                                minesLabel.setText("Mines: " + minesLeft);
                             }
                         }
                     }
@@ -114,6 +161,7 @@ public class Minesweeper {
     }
 
     void gameOver(){
+        timer.stop();
         for(MineTile tile : mineList){
             tile.setText("💣");
         }
@@ -154,8 +202,27 @@ public class Minesweeper {
         }
         
         if(tilesClicked == (rows * cols) - mineList.size()){
+            timer.stop();
             isGameOver = true;
             textLabel.setText("You Win!");
+
+            String message = "Congratulation, Player. You win!\nTime: " + seconds + " seconds";
+            Object[] options = {"Play Again", "Exit"};
+            int choice = JOptionPane.showOptionDialog(frame,
+                message,
+                "Victory!",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.INFORMATION_MESSAGE,
+                null,
+                options,
+                options[0]);
+            
+            if(choice == JOptionPane.YES_OPTION){
+                resetGame();
+            }
+            else{
+                System.exit(0);
+            }
         }
     }  
     
@@ -163,5 +230,28 @@ public class Minesweeper {
         if(r < 0 || r >= rows || c < 0 || c >= cols) return 0;
         if(mineList.contains(boardTiles[r][c])) return 1;
         return 0;
+    }
+
+    void resetGame(){
+        timer.stop();
+        seconds = 0;
+        firstClick = true;
+        isGameOver = false;
+        tilesClicked = 0;
+        minesLeft = minesToSet;
+
+        textLabel.setText("Minesweeper");
+        minesLabel.setText("Mines: " + minesLeft);
+        timeLabel.setText("Time: 0s");
+
+        for(int r = 0; r < rows; r++){
+            for(int c = 0; c < cols; c++){
+                MineTile tile = boardTiles[r][c];
+                tile.setEnabled(true);
+                tile.setText("");
+            }
+        }
+
+        setMines();
     }
 }
