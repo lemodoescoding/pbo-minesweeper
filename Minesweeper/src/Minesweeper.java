@@ -8,6 +8,7 @@ public class Minesweeper {
     private class MineTile extends JButton{
         int r;
         int c;
+        boolean revealed = false;
         
         public MineTile(int r, int c){
             this.r = r;
@@ -133,6 +134,7 @@ public class Minesweeper {
         timer.stop();
         for(MineTile tile : mineList){
             tile.setText("💣");
+            tile.setForeground(Color.BLACK);
         }
         isGameOver = true;
         textLabel.setText("Game Over!");
@@ -141,8 +143,10 @@ public class Minesweeper {
     void checkMine(int r, int c){
         if(r < 0 || r >= rows || c < 0 || c >= cols) return;
         MineTile tile = boardTiles[r][c];
-        if(!tile.isEnabled()) return;
-        tile.setEnabled(false);
+        if(tile.revealed) return;
+        tile.revealed = true;
+        tile.setBackground(new Color(225, 225, 225));
+        tile.setBorder(BorderFactory.createLineBorder(Color.GRAY));
         tilesClicked++;
         int minesCount = 0;
 
@@ -157,6 +161,16 @@ public class Minesweeper {
 
         if(minesCount > 0){
             tile.setText(Integer.toString(minesCount));
+            switch(minesCount) {
+                case 1: tile.setForeground(Color.BLUE); break;
+                case 2: tile.setForeground(new Color(0, 128, 0)); break; // Dark Green
+                case 3: tile.setForeground(Color.RED); break;
+                case 4: tile.setForeground(new Color(128, 0, 128)); break; // Purple
+                case 5: tile.setForeground(new Color(128, 0, 0)); break;   // Maroon
+                case 6: tile.setForeground(new Color(0, 128, 128)); break; // Teal
+                case 7: tile.setForeground(Color.BLACK); break;
+                case 8: tile.setForeground(Color.GRAY); break;
+            }
         }
         else{
             tile.setText("");
@@ -248,12 +262,14 @@ public class Minesweeper {
                 
                 tile.setFocusable(false);
                 tile.setMargin(new Insets(0, 0, 0, 0));
-                tile.setFont(tile.getFont().deriveFont(Font.PLAIN, fontSize));
+                tile.setFont(tile.getFont().deriveFont(Font.BOLD, fontSize));
                 tile.addMouseListener(new MouseAdapter() {
                     @Override
                     public void mousePressed(MouseEvent e){
                         if(isGameOver) return;
                         MineTile tile = (MineTile)e.getSource();
+
+                        if(tile.revealed) return;
 
                         if(firstClick){
                             timer.start();
@@ -273,8 +289,9 @@ public class Minesweeper {
                         }
                         // Right click
                         else if(e.getButton() == MouseEvent.BUTTON3){
-                            if(tile.getText() == "" && tile.isEnabled()){
+                            if(tile.getText() == "" && !tile.revealed){
                                 tile.setText("🚩");
+                                tile.setForeground(Color.RED);
                                 minesLeft--;
                                 minesLabel.setText("Mines: " + minesLeft);
                             }
