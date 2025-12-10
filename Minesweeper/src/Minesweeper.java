@@ -15,16 +15,16 @@ public class Minesweeper {
         }
     }
     
-    int tileSize = 32;
-
-    final int EASY_ROWS = 8, EASY_COLS = 8, EASY_MINES = 10;
-    final int MEDIUM_ROWS = 14, MEDIUM_COLS = 14, MEDIUM_MINES = 40;
-    final int HARD_ROWS = 20, HARD_COLS = 20, HARD_MINES = 99;
+    final int EASY_ROWS = 8, EASY_COLS = 8, EASY_MINES = 10, EASY_TILE_SIZE = 50, EASY_FONT_SIZE = 18;
+    final int MEDIUM_ROWS = 14, MEDIUM_COLS = 14, MEDIUM_MINES = 40, MEDIUM_TILE_SIZE = 40, MEDIUM_FONT_SIZE = 17;
+    final int HARD_ROWS = 20, HARD_COLS = 20, HARD_MINES = 99, HARD_TILE_SIZE = 32, HARD_FONT_SIZE = 16;
     
+    int tileSize = EASY_TILE_SIZE;
     int rows = EASY_ROWS;
     int cols = EASY_COLS;
+    int fontSize = EASY_FONT_SIZE;
     int boardsWidth = cols * tileSize;
-    int boardsHeight = rows * tileSize + 64; // extra space for text panel
+    int boardsHeight = rows * tileSize + fontSize*4; // extra space for text panel
     int tilesClicked = 0;
     int minesToSet = EASY_MINES;
     int minesLeft = minesToSet;
@@ -213,22 +213,28 @@ public class Minesweeper {
             rows = EASY_ROWS;
             cols = EASY_COLS;
             minesToSet = EASY_MINES;
+            fontSize = EASY_FONT_SIZE;
+            tileSize = EASY_TILE_SIZE;
         }
         else if(selectedDifficulty.equals("Medium")){
             rows = MEDIUM_ROWS;
             cols = MEDIUM_COLS;
             minesToSet = MEDIUM_MINES;
+            fontSize = MEDIUM_FONT_SIZE;
+            tileSize = MEDIUM_TILE_SIZE;
         }
         else if(selectedDifficulty.equals("Hard")){
             rows = HARD_ROWS;
             cols = HARD_COLS;
             minesToSet = HARD_MINES;
+            fontSize = HARD_FONT_SIZE;
+            tileSize = HARD_TILE_SIZE;
         }
         minesLeft = minesToSet;
 
 
         boardsWidth = cols * tileSize;
-        boardsHeight = rows * tileSize + 64;
+        boardsHeight = rows * tileSize + fontSize*4; // extra space for text panel
         frame.setSize(boardsWidth, boardsHeight);
 
         boardPanel.removeAll();
@@ -242,7 +248,7 @@ public class Minesweeper {
                 
                 tile.setFocusable(false);
                 tile.setMargin(new Insets(0, 0, 0, 0));
-                tile.setFont(tile.getFont().deriveFont(Font.PLAIN, 18));
+                tile.setFont(tile.getFont().deriveFont(Font.PLAIN, fontSize));
                 tile.addMouseListener(new MouseAdapter() {
                     @Override
                     public void mousePressed(MouseEvent e){
