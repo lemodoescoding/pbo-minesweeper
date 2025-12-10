@@ -187,7 +187,7 @@ public class Minesweeper {
         if(tilesClicked == (rows * cols) - mineList.size()){
             timer.stop();
             isGameOver = true;
-            textLabel.setText("You Win!");
+            textLabel.setText("Simply Lovely!");
 
             String message = "Congratulation, Player. You win!\nTime: " + seconds + " seconds";
             Object[] options = {"Play Again", "Exit"};
