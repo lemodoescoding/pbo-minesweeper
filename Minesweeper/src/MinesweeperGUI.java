@@ -3,7 +3,8 @@ import java.awt.event.*;
 import java.util.List;
 import javax.swing.*;
 
-public class MinesweeperGUI implements GameListener{
+public class MinesweeperGUI implements GameListener, MultiplayerListener {
+
     private JFrame frame;
     private JPanel boardPanel;
     private JLabel titleLabel;
@@ -14,14 +15,36 @@ public class MinesweeperGUI implements GameListener{
 
     private Difficulty currentDifficulty = Difficulty.EASY;
     private Game game;
-    private Tile[][] tiles;
+    private Cell[][] cells;
+    private TileUI[][] tiles;
+    private List<TileUI> numberedTiles;
+    private boolean multiplayer = false;
 
     public MinesweeperGUI(){
         SwingUtilities.invokeLater(this::createAndShowGUI);
     }
 
+    public MinesweeperGUI(List<String> multiplayerNames){
+        this.multiplayer = true;
+        SwingUtilities.invokeLater(() -> createAndShowGUI(multiplayerNames));
+    }
+
     private void createAndShowGUI(){
-        frame = new JFrame("Minesweeper (MVC)");
+        setupFrame();
+        game = new SingleplayerGame(currentDifficulty, this);
+        buildBoardUI();
+        frame.setVisible(true);
+    }
+
+    private void createAndShowGUI(List<String> names){
+        setupFrame();
+        game = new MultiplayerGame(currentDifficulty, this, this, names);
+        buildBoardUI();
+        frame.setVisible(true);
+    }
+
+    private void setupFrame(){
+        frame = new JFrame("Minesweeper");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLayout(new BorderLayout());
 
@@ -34,9 +57,9 @@ public class MinesweeperGUI implements GameListener{
         difficultyCombo.setSelectedItem(currentDifficulty);
 
         difficultyCombo.addActionListener(e -> {
-            Difficulty chosenDifficulty = (Difficulty) difficultyCombo.getSelectedItem();
-            if(chosenDifficulty != currentDifficulty){
-                currentDifficulty = chosenDifficulty;
+            Difficulty chosen = (Difficulty) difficultyCombo.getSelectedItem();
+            if(chosen != currentDifficulty){
+                currentDifficulty = chosen;
                 resetGame();
             }
         });
@@ -50,18 +73,10 @@ public class MinesweeperGUI implements GameListener{
         info.add(minesLabel);
         info.add(timeLabel);
         info.add(retryButton);
-
         frame.add(info, BorderLayout.SOUTH);
+
         boardPanel = new JPanel();
-        frame.add(boardPanel, BorderLayout.CENTER);    
-
-        game = new Game(currentDifficulty, this);
-        buildBoardUI();
-
-        frame.pack();
-        frame.setLocationRelativeTo(null);
-        frame.setResizable(false);
-        frame.setVisible(true);
+        frame.add(boardPanel, BorderLayout.CENTER);
     }
 
     private void buildBoardUI(){
@@ -72,123 +87,98 @@ public class MinesweeperGUI implements GameListener{
 
         boardPanel.removeAll();
         boardPanel.setLayout(new GridLayout(rows, cols));
-        tiles = new Tile[rows][cols];
+        
+        cells = new Cell[rows][cols];
+        tiles = new TileUI[rows][cols];
 
         for(int r=0; r<rows; r++){
             for(int c=0; c<cols; c++){
-                Tile currentTile = new Tile(r, c, fontSize);
-                currentTile.setPreferredSize(new Dimension(tileSize, tileSize));
-                final Tile finalTile = currentTile;
-                currentTile.addMouseListener(new MouseAdapter(){
-            
-                @Override
-                public void mousePressed(MouseEvent e){
-                    if(SwingUtilities.isLeftMouseButton(e)){
-                        game.handleLeftClick(finalTile);
-                    } else if(SwingUtilities.isRightMouseButton(e)){
-                        game.handleRightClick(finalTile);
-                        updateTileUI(finalTile); 
+                TileUI t = new TileUI(r, c, fontSize);
+                Cell cell = new Cell(r, c);
+                t.setPreferredSize(new Dimension(tileSize, tileSize));
+                t.addMouseListener(new MouseAdapter(){
+                    @Override
+                    public void mousePressed(MouseEvent e){
+                        if(SwingUtilities.isLeftMouseButton(e)){
+                            game.handleLeftClick(cell);
+                        } else if(SwingUtilities.isRightMouseButton(e)){
+                            game.handleRightClick(cell);
+                            updateTileUI(cell);
+                        }
                     }
-                }
-            });
+                });
 
-            tiles[r][c] = currentTile;
-            boardPanel.add(currentTile);
-
+                tiles[r][c] = t;
+                cells[r][c] = cell;
+                boardPanel.add(t);
             }
         }
 
-        game.setTilesArray(tiles);
-        game.reset(currentDifficulty); 
+        game.setCellsArray(cells);
+        minesLabel.setText("Mines: " + currentDifficulty.mines);
+
         frame.pack();
     }
 
     private void resetGame(){
         game.stopTimer();
-        game = new Game(currentDifficulty, this);
+        if(multiplayer){
+            MultiplayerGame mg = (MultiplayerGame) game;
+            List<String> names = mg.getAllPlayers();
+            game = new MultiplayerGame(currentDifficulty, this, this, names);
+        }
+        else game = new SingleplayerGame(currentDifficulty, this);
         buildBoardUI();
     }
 
-    private void updateTileUI(Tile tile){
-        if(tile.isFlagged()){
-            tile.setText("🚩");
-            tile.setForeground(Color.RED);
-        } else {
-            tile.setText("");
-        }
+    private void updateTileUI(Cell cell){
+        if(cell.isFlagged()){
+            tiles[cell.r][cell.c].setText("🚩");
+        } else if(cell.getAdjacentMine() < 1 || (!cell.isFlagged() && !cell.isRevealed())){
+            tiles[cell.r][cell.c].setText("");
+        } 
     }
 
-    // --- IMPLEMENTASI GAME LISTENER --- 
-
     @Override
-        public void onTilesRevealed(List<Tile> revealed){
-        for(Tile revealedTile : revealed) {
-            int r = revealedTile.r, c = revealedTile.c;
-            int adjMines = game == null ? 0 : game.getBoard().countAdjacentMines(r, c); 
-            revealedTile.setEnabled(false);
-            revealedTile.setBackground(new Color(225,225,225));
-            revealedTile.setBorder(BorderFactory.createLineBorder(Color.GRAY));
+    public void onCellsRevealed(List<Cell> revealed){
+        for(Cell cell : revealed){
+            int row = cell.r, col = cell.c;
 
-            if(game.getBoard().isMine(r,c)){
-                revealedTile.setText("💣");
-                revealedTile.setForeground(Color.BLACK);
+            tiles[row][col].setEnabled(false);
+            tiles[row][col].setBackground(new Color(225,225,225));
+            tiles[row][col].setBorder(BorderFactory.createLineBorder(Color.GRAY));
+
+            if(cell.isMine()){
+                tiles[row][col].setText("💣");
             } else {
-                if(adjMines > 0){
-                revealedTile.setText(Integer.toString(adjMines));
-                switch(adjMines){
-                    case 1: revealedTile.setForeground(Color.BLUE); break;
-                    case 2: revealedTile.setForeground(new Color(0,128,0)); break;
-                    case 3: revealedTile.setForeground(Color.RED); break;
-                    case 4: revealedTile.setForeground(new Color(128,0,128)); break;
-                    case 5: revealedTile.setForeground(new Color(128,0,0)); break;
-                    case 6: revealedTile.setForeground(new Color(0,128,128)); break;
-                    case 7: revealedTile.setForeground(Color.BLACK); break;
-                    case 8: revealedTile.setForeground(Color.GRAY); break;
-                    }
-                } else {
-                    revealedTile.setText("");
+                int adj = cell.getAdjacentMine();
+                if(adj > 0){
+                    tiles[row][col].setText(Integer.toString(adj));
                 }
             }
         }
-        
         frame.revalidate();
         frame.repaint();
     }
 
-
-
     @Override
-        public void onUpdateMinesLeft(int minesLeft){
+    public void onUpdateRemainingMine(int minesLeft){
         minesLabel.setText("Mines: " + minesLeft);
     }
 
-
     @Override
-        public void onUpdateTime(int seconds){
+    public void onUpdateTime(int seconds){
         timeLabel.setText("Time: " + seconds + "s");
     }
 
-
     @Override
     public void onGameWon(int seconds){
-        titleLabel.setText("You Win! Time: " + seconds + "s");
-        JOptionPane.showMessageDialog(frame, "Congratulations! You win. Time: " + seconds + " seconds", "Victory", JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(frame, "You win! Time: " + seconds + " seconds");
     }
-
 
     @Override
     public void onGameLost(){
-        titleLabel.setText("Game Over");
-        for(int r=0; r<tiles.length; r++){
-            for(int c=0; c<tiles[0].length; c++){
-                if(game.getBoard().isMine(r,c)){
-                    Tile t = tiles[r][c];
-                    t.setText("💣");
-                    t.setEnabled(false);
-                }
-            }   
-        }
-        JOptionPane.showMessageDialog(frame, "Game Over!", "Lost", JOptionPane.ERROR_MESSAGE);
+        JOptionPane.showMessageDialog(frame, "Game Over");
     }
 
     @Override
@@ -198,20 +188,28 @@ public class MinesweeperGUI implements GameListener{
         timeLabel.setText("Time: 0s");
 
         if(tiles != null){
-            for(int r=0; r<tiles.length; r++){
-                for(int c=0;c<tiles[0].length;c++){
-                    Tile tile = tiles[r][c];
-                    tile.setEnabled(true);
-                    tile.setText("");
-                    tile.setBackground(null);
-                    tile.setBorder(UIManager.getBorder("Button.border"));
-                    tile.setFlagged(false);
-                    tile.setRevealed(false);
+            for(TileUI[] row : tiles){
+                for(TileUI t : row){
+                    t.setEnabled(true);
+                    t.setText("");
+                    t.setBackground(null);
                 }
             }
         }
+    }
 
-        frame.revalidate();
-        frame.repaint();
+    @Override
+    public void onPlayerTurnChanged(int index, String name){
+        titleLabel.setText("Turn: " + name);
+    }
+
+    @Override
+    public void onPlayerEliminated(int index, String name){
+        JOptionPane.showMessageDialog(frame, name + " is eliminated!");
+    }
+
+    @Override
+    public void onMultiplayerGameEnded(String winner){
+        JOptionPane.showMessageDialog(frame, "Winner: " + winner);
     }
 }

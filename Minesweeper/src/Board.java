@@ -2,104 +2,215 @@ import java.awt.Point;
 import java.util.*;
 
 public class Board {
-    private final int rows;
-    private final int cols;
-    private final int totalMines;
-    private Tile[][] tiles;
-    private Set<Point> mineSet = new HashSet<>();
+    private final int rowTotal;
+    private final int colTotal;
+    private final int totalMine;
+    private Cell[][] cells;
+    private List<Point> mineList = new ArrayList<>();
 
-    public Board(int rows, int cols, int mines){
-        this.rows = rows;
-        this.cols = cols;
-        this.totalMines = mines;
-        tiles = new Tile[rows][cols];
+    public Board(int rowTotal, int colTotal, int mineTotal){
+        this.rowTotal = rowTotal;
+        this.colTotal = colTotal;
+        this.totalMine = mineTotal;
+        cells = new Cell[rowTotal][colTotal];
     }
 
-    public void setTiles(Tile[][] tiles){
-        this.tiles = tiles;
+    public void setCell(Cell[][] cells){
+        this.cells = cells;
     }
 
-    public int getRows(){ return rows; }
-    public int getCols(){ return cols; }
-    public int getTotalMines(){ return totalMines; }
+    public int getRowSize(){ return rowTotal; }
+    public int getColSize(){ return colTotal; }
+    public int getTotalMine(){ return totalMine; }
 
-    public void placeMines(int excludeR, int excludeC){
-        mineSet.clear();
+    public void placeMine(int safeRowPoint, int safeColPoint){
+        mineList.clear();
         Random rand = new Random();
-        while(mineSet.size() < totalMines){
-        int r = rand.nextInt(rows);
-        int c = rand.nextInt(cols);
-        if(r == excludeR && c == excludeC) continue; 
-            mineSet.add(new Point(r, c));
+
+        while (mineList.size() < totalMine) {
+            int r = rand.nextInt(rowTotal);
+            int c = rand.nextInt(colTotal);
+
+            boolean inSafe3x3 = Math.abs(r - safeRowPoint) <= 1 && Math.abs(c - safeColPoint) <= 1;
+            if (inSafe3x3) continue;
+
+            boolean mineIsPlaced = false; //cek duplikat
+            for (Point p : mineList) {
+                if (p.x == r && p.y == c) {
+                    mineIsPlaced = true;
+                    break;
+                }
+            }
+
+            if (mineIsPlaced) continue;
+
+            mineList.add(new Point(r, c));
+            cells[r][c].setMine();
+        }
+        computeAllAdjacents();
+    }
+
+    private void computeAllAdjacents(){
+        for (int r = 0; r < rowTotal; r++){
+            for (int c = 0; c < colTotal; c++){
+                countAdjacentMine(r, c);
+            }
         }
     }
 
-    public boolean isMine(int r, int c){
-        return mineSet.contains(new Point(r, c));
+    public void countAdjacentMine(int r, int c){
+        int count = 0;
+        for (int deltaRow = -1; deltaRow <= 1; deltaRow++){
+            for (int deltaCol = -1; deltaCol <= 1; deltaCol++){
+                if (deltaRow == 0 && deltaCol == 0) continue;
+                int neighborRow = r + deltaRow;
+                int neighborCol = c + deltaCol;
+                if (!isInsideBoard(neighborRow, neighborCol)) continue;
+                if (cells[neighborRow][neighborCol].isMine()) count++;
+            }
+        }
+        cells[r][c].setAdjacentMine(count);
     }
 
-    public int countAdjacentMines(int r, int c){
+    public int countAdjacentFlag(int r, int c){
         int count = 0;
-        for(int rowIndex = -1; rowIndex <= 1; rowIndex++){ // -1: bawah, 0: tile sekarang, 1: atas
-            for(int colIndex = -1; colIndex <= 1; colIndex++){ // -1: kiri, 0: tile sekarang, 1: tile kanan
-                if(rowIndex == 0 && colIndex == 0) continue;
-                int nextRow = r + rowIndex;
-                int nextCol = c + colIndex;
-                if(nextRow < 0 || nextRow >= rows || nextCol < 0 || nextCol >= cols) continue;
-                if(isMine(nextRow, nextCol)) count++;
+        for (int deltaRow = -1; deltaRow <= 1; deltaRow++){
+            for (int deltaCol = -1; deltaCol <= 1; deltaCol++){
+                if (deltaRow == 0 && deltaCol == 0) continue;
+                int neighborRow = r + deltaRow;
+                int neighborCol = c + deltaCol;
+                if (!isInsideBoard(neighborRow, neighborCol)) continue;
+                if (cells[neighborRow][neighborCol].isFlagged()) count++;
             }
         }
         return count;
     }
 
-    public List<Tile> reveal(int r, int c){
-        List<Tile> revealed = new ArrayList<>();
-        if(tiles[r][c].isRevealed() || tiles[r][c].isFlagged()) return revealed;
+    public List<Cell> reveal(int row, int col) {
+        List<Cell> toReveal = new ArrayList<>();
+        Cell start = cells[row][col];
 
-        if(isMine(r,c)){
-            tiles[r][c].setRevealed(true);
-            revealed.add(tiles[r][c]);
-            return revealed;
+        if (start.isFlagged()) return toReveal;
+
+        if (start.isRevealed()) {
+            int adjacentFlag = countAdjacentFlag(row, col);
+            int adjacentMine = start.getAdjacentMine();
+
+            if (adjacentFlag != adjacentMine) return toReveal;
+
+            List<Cell> adjacentCell = new ArrayList<>();
+            for (int deltaRow = -1; deltaRow <= 1; deltaRow++){
+                for (int deltaCol = -1; deltaCol <= 1; deltaCol++){
+                    if (deltaRow == 0 && deltaCol == 0) continue;
+                    int nRow = row + deltaRow;
+                    int nCol = col + deltaCol;
+                    if (!isInsideBoard(nRow, nCol)) continue;
+                    Cell neighbor = cells[nRow][nCol];
+                    if (!neighbor.isRevealed() && !neighbor.isFlagged()) {
+                        adjacentCell.add(neighbor);
+                    }
+                }
+            }
+
+            if (adjacentCell.isEmpty()) return toReveal;
+
+            List<Cell> connectedCell = new ArrayList<>();
+            for (Cell neighbor : adjacentCell) {
+                if (neighbor.isMine()) {
+                    neighbor.setRevealed(true);
+                    connectedCell.add(neighbor);
+                    toReveal.addAll(connectedCell);
+                    return toReveal;
+                }
+                connectedCell.addAll(floodReveal(neighbor.r, neighbor.c));
+            }
+            toReveal.addAll(connectedCell);
+            return toReveal;
         }
 
-        Deque<Point> stack = new ArrayDeque<>();
-        stack.push(new Point(r,c));
+        if (start.isMine()) {
+            start.setRevealed(true);
+            toReveal.add(start);
+            return toReveal;
+        }
 
-        while(!stack.isEmpty()){
-            Point coordinate = stack.pop();
-            int row = coordinate.x, col = coordinate.y;
-            Tile t = tiles[row][col];
+        toReveal.addAll(floodReveal(row, col));
+        return toReveal;
+    }
 
-            if(t.isRevealed() || t.isFlagged()) continue;
-            t.setRevealed(true);
-            revealed.add(t);
+    private List<Cell> floodReveal(int startRow, int startCol) {
+        List<Cell> toReveal = new ArrayList<>();
+        List<Point> stack = new ArrayList<>();
+        boolean[][] queued = new boolean[rowTotal][colTotal];
 
-            int adjacentAmount = countAdjacentMines(row, col);
-            if(adjacentAmount == 0){ //pop semua yang bukan mine
-            for(int rowIndex=-1; rowIndex<=1; rowIndex++){
-                for(int countIndex=-1; countIndex<=1; countIndex++){
-                    if(rowIndex==0 && countIndex==0) continue;
+        stack.add(new Point(startRow, startCol));
 
-                    int nextRow = row + rowIndex, nextCol = col + countIndex;
-                    if(nextRow < 0 || nextRow >= rows || nextCol < 0 || nextCol >= cols) continue;
+        while (!stack.isEmpty()) {
+            Point p = stack.remove(stack.size() - 1);
+            int currentRow = p.x;
+            int currentCol = p.y;
+            if (!isInsideBoard(currentRow, currentCol)) continue;
+            Cell currentCell = cells[currentRow][currentCol];
 
-                    Tile nextTile = tiles[nextRow][nextCol];
-                    if(!nextTile.isRevealed() && !nextTile.isFlagged() && !isMine(nextRow,nextCol)){
-                        stack.push(new Point(nextRow,nextCol));
+            if (currentCell.isRevealed() || currentCell.isFlagged()) continue;
+
+            currentCell.setRevealed(true);
+            toReveal.add(currentCell);
+
+            if (currentCell.getAdjacentMine() == 0) {
+                for (int deltaRow = -1; deltaRow <= 1; deltaRow++){
+                    for (int deltaCol = -1; deltaCol <= 1; deltaCol++){
+                        if (deltaRow == 0 && deltaCol == 0) continue;
+
+                        int neighborRow = currentRow + deltaRow;
+                        int neighborCol = currentCol + deltaCol;
+
+                        if (!isInsideBoard(neighborRow, neighborCol)) continue;
+                        if (!queued[neighborRow][neighborCol]) {
+                            stack.add(new Point(neighborRow, neighborCol));
+                            queued[neighborRow][neighborCol] = true;
                         }
                     }
                 }
             }
         }
-    return revealed;
+        return toReveal;
     }
 
-    public Set<Point> getMineSet(){ return Collections.unmodifiableSet(mineSet); }
+    public List<Point> getMineSet(){
+        return Collections.unmodifiableList(mineList);
+    }
 
-    public void revealAllMines(){
-        for(Point p : mineSet){
-            Tile t = tiles[p.x][p.y];
-            t.setRevealed(true);
+    public void revealAllMine() {
+        for (Point p : mineList) {
+            cells[p.x][p.y].setRevealed(true);
         }
+    }
+
+    public boolean unrevealedCellExist(int r, int c){
+        for (int deltaRow = -1; deltaRow <= 1; deltaRow++){
+            for (int deltaCol = -1; deltaCol <= 1; deltaCol++){
+                if (deltaRow == 0 && deltaCol == 0) continue;
+                int neighborRow = r + deltaRow;
+                int neighborCol = c + deltaCol;
+                if (!isInsideBoard(neighborRow, neighborCol)) continue;
+                Cell neighbor = cells[neighborRow][neighborCol];
+                if (!neighbor.isRevealed() && !neighbor.isFlagged()) return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean flaggedAllMine() {
+        if (mineList.isEmpty()) return false;
+        for (Point p : mineList) {
+            Cell c = cells[p.x][p.y];
+            if (!c.isFlagged()) return false;
+        }
+        return true;
+    }
+
+    private boolean isInsideBoard(int row, int col) {
+        return row >= 0 && row < rowTotal && col >= 0 && col < colTotal;
     }
 }

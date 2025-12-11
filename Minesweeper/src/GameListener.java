@@ -1,8 +1,8 @@
 import java.util.*;
 
 public interface GameListener {
-    void onTilesRevealed(List<Tile> revealed);
-    void onUpdateMinesLeft(int minesLeft);
+    void onCellsRevealed(List<Cell> revealed);
+    void onUpdateRemainingMine(int minesLeft);
     void onUpdateTime(int seconds);
     void onGameWon(int seconds);
     void onGameLost();
