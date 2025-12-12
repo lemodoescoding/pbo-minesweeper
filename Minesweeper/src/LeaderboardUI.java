@@ -3,7 +3,7 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.sql.*;
 
-class LeaderboardUI extends JFrame {
+public class LeaderboardUI extends JFrame {
 
   private JComboBox<String> difficultyBox;
   private JComboBox<String> modeBox;

@@ -21,10 +21,6 @@ class Database {
     return DriverManager.getConnection(URL, USER, PASS);
   }
 
-  /* ============================================================
-     PLAYER FUNCTIONS
-     ============================================================ */
-
   public static int createPlayerIfNotExists(String name) {
     String sql = "INSERT IGNORE INTO players (name) VALUES (?)";
 
@@ -136,10 +132,6 @@ class Database {
     return -1;
   }
 
-  /* ============================================================
-     SINGLEPLAYER GAME RESULT
-     ============================================================ */
-
   public static void saveSingleplayerGame(int playerId, int difficultyId,
                                           double durationSeconds, boolean win) {
 
@@ -162,10 +154,6 @@ class Database {
           e.printStackTrace();
         }
   }
-
-  /* ============================================================
-     MULTIPLAYER GAME HEADER
-     ============================================================ */
 
   public static int createMultiplayerGame(int difficultyId,
                                           Integer winnerPlayerId) {
@@ -196,10 +184,6 @@ class Database {
 
         return -1;
   }
-
-  /* ============================================================
-     MULTIPLAYER PARTICIPANTS
-     ============================================================ */
 
   public static void addMultiplayerParticipant(int gameId, int playerId) {
         String sql = """
