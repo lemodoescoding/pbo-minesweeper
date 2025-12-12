@@ -46,6 +46,7 @@ public class MinesweeperGUI implements GameListener, MultiplayerListener {
     private void setupFrame(){
         frame = new JFrame("Minesweeper");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setResizable(false);
         frame.setLayout(new BorderLayout());
 
         titleLabel = new JLabel("Minesweeper", SwingConstants.CENTER);
@@ -134,28 +135,64 @@ public class MinesweeperGUI implements GameListener, MultiplayerListener {
     private void updateTileUI(Cell cell){
         if(cell.isFlagged()){
             tiles[cell.r][cell.c].setText("🚩");
+            tiles[cell.r][cell.c].setForeground(Color.RED);
         } else if(cell.getAdjacentMine() < 1 || (!cell.isFlagged() && !cell.isRevealed())){
             tiles[cell.r][cell.c].setText("");
+            tiles[cell.r][cell.c].setForeground(Color.BLACK);
         } 
         
         // showAllBombs();
     }
+
+    // @Override
+    // public void onCellsRevealed(List<Cell> revealed){
+    //     for(Cell cell : revealed){
+    //         int row = cell.r, col = cell.c;
+
+    //         tiles[row][col].setEnabled(false);
+    //         tiles[row][col].setBackground(new Color(225,225,225));
+    //         tiles[row][col].setBorder(BorderFactory.createLineBorder(Color.GRAY));
+
+    //         if(cell.isMine()){
+    //             tiles[row][col].setText("💣");
+    //         } else {
+    //             int adj = cell.getAdjacentMine();
+    //             if(adj > 0){
+    //                 // tiles[row][col].setText(Integer.toString(adj));
+    //                 setColoredNumber(tiles[row][col], adj);
+    //             }
+    //         }
+    //     }
+    //     frame.revalidate();
+    //     frame.repaint();
+    // }
 
     @Override
     public void onCellsRevealed(List<Cell> revealed){
         for(Cell cell : revealed){
             int row = cell.r, col = cell.c;
 
-            tiles[row][col].setEnabled(false);
-            tiles[row][col].setBackground(new Color(225,225,225));
-            tiles[row][col].setBorder(BorderFactory.createLineBorder(Color.GRAY));
+            // 1. Remove listeners so it acts disabled (cannot be clicked)
+            for (MouseListener ml : tiles[row][col].getMouseListeners()) {
+                tiles[row][col].removeMouseListener(ml);
+            }
+
+            // 2. [NEW FIX] Force the button to be flat and show the background color
+            tiles[row][col].setOpaque(true);               // Force background paint
+            tiles[row][col].setContentAreaFilled(false);   // Remove shiny 3D button skin
+            tiles[row][col].setBackground(Color.LIGHT_GRAY); // Sets the gray color
+            tiles[row][col].setBorder(BorderFactory.createLineBorder(Color.GRAY)); // Keep the border
 
             if(cell.isMine()){
                 tiles[row][col].setText("💣");
+                tiles[row][col].setBackground(Color.RED); // Optional: Make bombs stand out
             } else {
                 int adj = cell.getAdjacentMine();
                 if(adj > 0){
-                    tiles[row][col].setText(Integer.toString(adj));
+                    setColoredNumber(tiles[row][col], adj);
+                } else {
+                    // Empty tile: ensure text is empty
+                    tiles[row][col].setText("");
                 }
             }
         }
@@ -224,5 +261,37 @@ public class MinesweeperGUI implements GameListener, MultiplayerListener {
                 }
             }
          }
+    }
+
+    // [FIXED] Simpler version using standard setForeground
+    private void setColoredNumber(TileUI tile, int number) {
+        tile.setText(String.valueOf(number));
+
+        switch (number) {
+            case 1: 
+                tile.setForeground(Color.BLUE); 
+                break;
+            case 2: 
+                tile.setForeground(new Color(0, 128, 0)); // Darker Green
+                break;
+            case 3: 
+                tile.setForeground(Color.RED); 
+                break;
+            case 4: 
+                tile.setForeground(new Color(128, 0, 128)); // Purple
+                break;
+            case 5: 
+                tile.setForeground(new Color(128, 0, 0)); // Maroon
+                break;
+            case 6: 
+                tile.setForeground(new Color(0, 128, 128)); // Turquoise
+                break;
+            case 7: 
+                tile.setForeground(Color.BLACK); 
+                break;
+            case 8: 
+                tile.setForeground(Color.GRAY); 
+                break;
+        }
     }
 }

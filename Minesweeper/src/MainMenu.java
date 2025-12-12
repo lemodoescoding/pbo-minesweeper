@@ -24,6 +24,7 @@ public class MainMenu {
     private void build(){
         frame = new JFrame("Minesweeper Menu");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setResizable(false);
         frame.setLayout(new BorderLayout());
 
         JLabel title = new JLabel("Multiplayer Minesweeper", SwingConstants.CENTER);
