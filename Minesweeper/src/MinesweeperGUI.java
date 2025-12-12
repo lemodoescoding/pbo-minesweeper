@@ -137,6 +137,8 @@ public class MinesweeperGUI implements GameListener, MultiplayerListener {
         } else if(cell.getAdjacentMine() < 1 || (!cell.isFlagged() && !cell.isRevealed())){
             tiles[cell.r][cell.c].setText("");
         } 
+        
+        // showAllBombs();
     }
 
     @Override
@@ -211,5 +213,16 @@ public class MinesweeperGUI implements GameListener, MultiplayerListener {
     @Override
     public void onMultiplayerGameEnded(String winner){
         JOptionPane.showMessageDialog(frame, "Winner: " + winner);
+    }
+
+    private void showAllBombs(){ //debugging function
+    System.out.println("bombcall");
+         for(int i=0; i<currentDifficulty.rows; i++){
+            for(int j=0; j<currentDifficulty.cols; j++){
+                if(cells[i][j].isMine()){
+                    tiles[i][j].setText("💣");
+                }
+            }
+         }
     }
 }

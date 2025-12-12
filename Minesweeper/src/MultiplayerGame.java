@@ -6,6 +6,7 @@ public class MultiplayerGame extends Game {
     private List<String> playerNameList;
     private boolean[] eliminated;
     private int currentPlayerIndex = 0;
+    private int activeBombCount;
     private MultiplayerListener multiplayerListener;
 
     public MultiplayerGame(Difficulty difficulty,
@@ -17,6 +18,7 @@ public class MultiplayerGame extends Game {
         this.playerCount = playerList.size();
         this.multiplayerListener = multiplayerListener;
         this.eliminated = new boolean[playerCount];
+        this.activeBombCount = difficulty.mines;
     }
 
     @Override
@@ -36,8 +38,11 @@ public class MultiplayerGame extends Game {
         listener.onCellsRevealed(revealed);
 
         for (Cell revealedCell : revealed) {
+            tilesRevealed++;
             if (revealedCell.isMine()) {
+                tilesRevealed--;
                 eliminated[currentPlayerIndex] = true;
+                listener.onUpdateRemainingMine(--mineLeft);
                 if (multiplayerListener != null) {
                     multiplayerListener.onPlayerEliminated(currentPlayerIndex, playerNameList.get(currentPlayerIndex));
                 }
@@ -45,6 +50,11 @@ public class MultiplayerGame extends Game {
                 checkEnd();
                 return;
             }
+        }
+        
+        if(tilesRevealed == difficulty.rows * difficulty.cols - difficulty.mines){
+            triggerWin();
+            return;
         }
 
         advanceTurn();
@@ -59,20 +69,6 @@ public class MultiplayerGame extends Game {
         cell.setFlagged(nowFlagged);
         mineLeft += nowFlagged ? -1 : 1;
         listener.onUpdateRemainingMine(mineLeft);
-
-        if (nowFlagged) {
-            if (board.flaggedAllMine()) {
-                isGameOver = true;
-                stopTimer();
-                String winnerName = playerNameList.get(currentPlayerIndex);
-                if (multiplayerListener != null) {
-                    multiplayerListener.onMultiplayerGameEnded(winnerName);
-                } else {
-                    listener.onGameWon(seconds);
-                }
-                return;
-            }
-        }
     }
 
     private void advanceTurn(){
@@ -102,14 +98,18 @@ public class MultiplayerGame extends Game {
         }
 
         if (aliveCount == 1) {
-            isGameOver = true;
-            stopTimer();
-            String winner = playerNameList.get(lastAliveIndex);
-            if (multiplayerListener != null) {
-                multiplayerListener.onMultiplayerGameEnded(winner);
-            } else {
-                listener.onGameWon(seconds);
-            }
+            triggerWin();
+        }
+    }
+
+    private void triggerWin(){
+         isGameOver = true;
+        stopTimer();
+        String winnerName = playerNameList.get(currentPlayerIndex);
+        if (multiplayerListener != null) {
+            multiplayerListener.onMultiplayerGameEnded(winnerName);
+        } else {
+            listener.onGameWon(seconds);
         }
     }
 

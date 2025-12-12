@@ -201,6 +201,10 @@ public class Board {
         return false;
     }
 
+    // public boolean gameWon(){
+
+    // }
+
     public boolean flaggedAllMine() {
         if (mineList.isEmpty()) return false;
         for (Point p : mineList) {

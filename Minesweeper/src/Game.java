@@ -7,7 +7,7 @@ public abstract class Game {
     protected Cell[][] cells;
     protected boolean firstClick = true;
     protected boolean isGameOver = false;
-    protected int tilesRevealed = 0;
+    protected int tilesRevealed;
     protected int mineLeft;
     protected int seconds = 0;
     protected Timer timer;
