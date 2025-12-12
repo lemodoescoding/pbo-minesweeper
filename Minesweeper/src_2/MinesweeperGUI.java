@@ -3,7 +3,7 @@ import java.awt.event.*;
 import java.util.List;
 import javax.swing.*;
 
-class MinesweeperGUI implements GameListener, MultiplayerListener {
+public class MinesweeperGUI implements GameListener, MultiplayerListener {
 
   private JFrame frame;
   private JPanel boardPanel;
